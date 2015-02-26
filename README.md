@@ -1,3 +1,3 @@
 # Soccer Analytics
 
-A repository for storing any work I so in soccer analytics.
+A repository for storing any work I do in soccer analytics.
