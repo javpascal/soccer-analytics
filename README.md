@@ -8,7 +8,7 @@ A repository for storing any work I do in soccer analytics. Outside of the noteb
 
 ### Tableau Workbooks
 
-* [Brazilian Serie A 2015: Age Distribution and Minutes Up to Matchday 9](https://public.tableau.com/profile/gordonf#!/vizhome/BrazilianSerieA2015_Players_Matchday9/Dashboard1)
+* [Brazilian Serie A 2015: Age Distribution and Minutes Up to Matchday 9](https://public.tableau.com/profile/gordonf#!/vizhome/BrazilianSerieA2015_Players_Matchday9/Dashboard1): A Tableau visualization of the minutes played as a function of age for players in Brazil's top soccer league. The data is current up to the first nine rounds of play.
 
 ### Scrapers
 
