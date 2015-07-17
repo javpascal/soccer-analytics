@@ -33,8 +33,8 @@ for team in serieA_team_list:
         player_dict['Name'] = player.find('span',{'class':'ge-card-elenco-jogador-nome'}).text.strip()    
         player_dict['Age'] = player.find('span',{'class':'ge-card-elenco-jogador-detalhes'}).text.strip()
 		
-		#This info is on players with injuries/suspensions and how long they are expected to be unavailable.
-		#Since it's conditional, I put it in a try and except.
+	#This info is on players with injuries/suspensions and how long they are expected to be unavailable.
+	#Since it's conditional, I put it in a try and except.
         try:
             player_dict['Status'] = player.find('span',{'class':'ge-card-elenco-status-status status-texto'}).text.strip()
             player_dict['Notes'] = player.find('span',{'class':'ge-card-elenco-status-tempo'}).text.strip()
