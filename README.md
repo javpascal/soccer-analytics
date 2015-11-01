@@ -1,6 +1,6 @@
 ## Soccer Analytics
 
-A repository for storing any work I do in soccer analytics. Outside of the notebooks, I plan to do a lot of work in Tableau.
+A repository for storing any work I do in soccer analytics. Outside of the notebooks, I plan to do work in Tableau.
 ***
 ### Notebooks
 
@@ -12,6 +12,6 @@ A repository for storing any work I do in soccer analytics. Outside of the noteb
 
 ### Scrapers
 
-* **Globo Squad Scraper**: Gathers data on age, injury/suspension, and temporal injury/suspension notes for all players in Brazil's top soccer division.
+* **Globo Web Scraper**: Gathers data on age, injury/suspension, and temporal injury/suspension notes for all players in Brazil's top soccer division.
 
-* **Soccerway Brazil Squad Scraper**: Another version of the above which gathers data from Soccerway. Various statistics are available, but for now it just gathers data on age and minutes played. It generated the data used in the "Brazilian Serie A 2015: Age Distribution and Minutes Up to Matchday 9" Tableau workbook.
+* **Soccerway Web Scraper**: Another version of the above which gathers data from Soccerway. Various statistics are available, but for now it just gathers data on age and minutes played. It generated the data used in the "Brazilian Serie A 2015: Age Distribution and Minutes Up to Matchday 9" Tableau workbook.
