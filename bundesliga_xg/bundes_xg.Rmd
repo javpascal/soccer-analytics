@@ -1,0 +1,217 @@
+---
+title: "Bundesliga xG 15-16"
+author: "Gordon Fleetwood"
+date: "April 28, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Bundesliga 15-16 Expected Goals Exploratory Analysis
+
+Soccer's nascent analytics movement has one dominant metric. It's called Expected Goals or simply xG. Models for calculating xG differ but the underlying concept is the same. In a nutshell, xG takes a shot's characteristics - distance from goal, angle from goal, preceding actions, etc. - and assigns a probability that said shot will result in a goal. Summing these probabilities for a single game gives a close approximation of which team created the better goal-scoring opportunities. xG is even better when the sample size stretches over a season. A team's expected goals total is a good indicator of they will finish in the league table.
+
+The metric is most visible in the amateur sphere but signs suggest that it is used among professional teams as well. For example, Arsenal's coach, Arsene Wenger, recently used it as a justification of his team's underlying good performances. Professional analytics work is often behind closed doors, with the data stored behind even thicker ones. A similar state persists in the amateur sphere. One can find detailed explanations of Expected Goals models, but the data is not available to peruse.
+
+Recently, however, @fussbALEXperte [published](https://fussbalex.wordpress.com/download/) aggregated match level Expected Goals data for the first 30 rounds (out of a possible 34) of the Bundesliga, Germany's highest soccer league. With this data in hand, let's take a look at how the majority of the 2015-2016 season played out from the perspective of Expected Goals. One caveat - since the data is aggregated, we can't use simulations to get a more accurate picture of xG probabilities.
+
+```{r imports, message = FALSE}
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+bund_xg <- read.csv("../../../R/data/bundesliga_15_16/bundesliga_xg_15_16.csv")
+head(bund_xg)
+```
+
+The data is in the wide format. It needs to be converted to the long formation to be more helpful. 
+
+```{r long_data}
+bund_xg.long <- gather(bund_xg, Status, Team, Home:Away)
+bund_xg.long$xG <- ifelse(bund_xg.long$Status == 'Home', 
+                          bund_xg.long$xG_H, 
+                          bund_xg.long$xG_A)
+bund_xg.long.team <- group_by(bund_xg.long, Team)
+bund_xg.long.team <- bund_xg.long.team[, -c(2,3)]
+head(bund_xg.long.team)
+```
+
+For starters let's see how the team's performed over the 30 games playing at and away from home.
+
+```{r plots}
+xg.plot <-  ggplot(data = bund_xg.long, 
+       aes(x = GW, y = xG, group = Status, color = Status)) + 
+  geom_point() + 
+  geom_line() + 
+  labs(title = 'Bundesliga 15/16', x = 'Game Week', y ='Expected Goals For') +
+  facet_wrap(~Team)
+
+xg.plot
+```
+
+By eye-balling the graph it looks look most teams post higher xG numbers at home. (Bayern Munich's numbers especially stand out.)
+
+It's true overall...
+
+```{r}
+bund_xg.long %>% group_by(., Status) %>% summarise(., mean = mean(xG))
+```
+
+...but that comes with obvious caveats. Let's look at a team by team breakdown.
+
+```{r}
+team.mean <-  bund_xg.long.team %>% group_by(.,Team, Status) %>% summarise(., mean = mean(xG)) %>% 
+  mutate(diff = mean[2] - mean[1] > 0)
+
+table(team.mean$diff)/2
+```
+
+So only two teams had an average xG tally higher away from home than at home.
+
+```{r}
+unique(team.mean[team.mean$diff == FALSE,]$Team)
+```
+
+Which teams had the biggest and smallest disparity between their performance at home and away from home?
+
+```{r}
+bund_xg.long.team %>% 
+  group_by(.,Team, Status) %>% 
+  summarise(., mean = mean(xG)) %>% 
+  mutate(diff = mean[2] - mean[1]) %>% 
+  summarise(., Mean.xG.By.Status = max(abs(diff))) %>% 
+  arrange(., -Mean.xG.By.Status)
+```
+
+On average Bayern Munich created chances work 1.5 extra goals at home, while Bayer Leverkusen more or less created chances of the same quality.
+
+It's clear from what the data so far that Bayern Munich are ahead of the pack, followed by Borussia Dortmund. This isn't surprising to someone who follows soccer but let's bring in some more data. 
+
+Unfortunately, I did not have a copy of the league table about 30 games, but I was able to webscrape these results using RSelenium and store them as a csv. Thus, it's simple to recreate the table at that time. 
+
+```{r}
+df.bundes.scores <- read.csv('../../../R/data/bundesliga_15_16/bundesliga_15_16_scores.csv', 
+                             stringsAsFactors = F)
+df.bundes.scores$GW <- rep(1:30, each = 9)
+
+#The teams names don't match up with those in the xG data. This is the conversion.
+
+teams.unique  <- sort(unique(df.bundes.scores$Home.Team))
+
+teams.vec <- c('Augsburg', 'Leverkusen', 'Bayern', 'Dortmund', 'Gladbach', "Darmstadt", "Frankfurt", "Hamburg", "Hannover", "Berlin", "Hoffenheim", "Ingolstadt", "Köln", "Mainz", "Schalke", "Stuttgart", "Bremen", "Wolfsburg")
+
+names(teams.vec) <- teams.unique
+
+df.bundes.scores$Home.Team <-  unname(sapply(df.bundes.scores$Home.Team, (function (x) teams.vec[[x]])))
+
+df.bundes.scores$Away.Team <-  unname(sapply(df.bundes.scores$Away.Team, (function (x) teams.vec[[x]])))
+
+#Now transforming to long data.
+
+df.bundes.scores.long <-  gather(df.bundes.scores, 
+                                 Team.Score, 
+                                 Score,
+                                 Home.Score:Away.Score)
+
+teams  <- c(df.bundes.scores.long$Home.Team[1:270], df.bundes.scores.long$Away.Team[271:540])
+
+df.bundes.scores.long$Team <- teams 
+df.bundes.scores.long <- df.bundes.scores.long[, -c(1, 2)]
+```
+
+Let's recreate the table.
+
+```{r}
+create.table =  function(df, teams){
+  points <- c()
+  goals.f <- c()
+  goals.a <- c()
+  
+  for (i in 1:length(teams)) {
+    df.temp.home <- subset(df, (Home.Team == teams[[i]]))
+    df.temp.away <- subset(df, (Away.Team == teams[[i]]))
+    
+    df.temp.home$Pts <- ifelse(
+      df.temp.home$Home.Score > df.temp.home$Away.Score,
+      yes = 3, 
+      no = ifelse(df.temp.home$Home.Score ==df.temp.home$Away.Score, 
+                  yes = 1, 
+                  no = 0)
+      )
+    df.temp.away$Pts <- ifelse(
+      df.temp.away$Home.Score < df.temp.away$Away.Score, 
+      yes = 3, 
+      no = ifelse(df.temp.away$Home.Score == df.temp.away$Away.Score, 
+                  yes = 1, 
+                  no = 0)
+      )
+    
+    points <-  c(points, sum(df.temp.home$Pts) + sum(df.temp.away$Pts))
+    goals.f <- c(goals.f, 
+                 sum(df.temp.home$Home.Score) + sum(df.temp.away$Away.Score))
+    goals.a <- c(goals.a, 
+                 sum(df.temp.home$Away.Score) + sum(df.temp.away$Home.Score))
+    
+  }
+  df.final <-  data.frame(teams, points, goals.f, goals.a)
+  df.final$gd <- df.final$goals.f - df.final$goals.a
+  return(df.final %>% arrange(., desc(points), desc(gd), desc(goals.f), desc(goals.a)))
+}
+
+table <- create.table(df.bundes.scores, teams.vec)
+table
+```
+
+Bayern's dominance makes more sense in context. Now that we have the table to match up with the expected goals, let's do some more exploration. 
+
+```{r}
+temp.bund.xg <- bund_xg
+colnames(temp.bund.xg) <- c('GW', 'Home.Team', 
+                            'Away.Team', 'Home.Score', 
+                            'Away.Score')
+
+table.xg <- create.table(temp.bund.xg, teams.vec)
+table.xg$goals.f <- round(table.xg$goals.f, 2)
+table.xg$goals.a <- round(table.xg$goals.a, 2)
+table.xg$gd <- round(table.xg$gd, 2)
+colnames(table.xg) <- c('teams', 'x.points', 'x.goals.f', 'x.goals.a', 'x.gd')
+table.xg
+```
+
+Now I have two tables: one which displays what really happened in the Bundesliga's first 30 rounds and the other what we would have expected to happen based on expected goals. We can now compare league position versus expected league position.
+
+```{r}
+tbl.comp<-data.frame(table$teams, 
+                     as.integer(rownames(table)), 
+                     sapply(table$teams, (function (x) which(table.xg$teams == x))))
+
+colnames(tbl.comp) = c('team', 'real.position', 'expected.position')
+tbl.comp$pos.diff = as.integer(tbl.comp$real.position) -tbl.comp$expected.position
+tbl.comp
+```
+
+Dortmund, Bayern, and Hannover are in the positions indicated by expected goals, but other teams are all ove the place. Most notably, Bremen should be 12 places higher while Schalke should be 7 places lower. 
+
+Finally, let's look at this from the perspective of the difference between real and expected points and goal difference.
+
+```{r}
+combined.table <- merge(table, table.xg, by = 'teams')
+combined.table <- combined.table %>% arrange(desc(points))
+combined.table$actual.expected.gd <- combined.table$gd - combined.table$x.gd
+combined.table$actual.expected.pts <- combined.table$points - combined.table$x.points
+
+combined.table <-  combined.table %>% arrange(., 
+                                              desc(actual.expected.pts),
+                                              desc(actual.expected.gd))
+
+combined.table[, c(1, length(combined.table), length(combined.table) - 1)]
+```
+
+Teams like Bayern and Gladbach has as much points as they would be expected to given xG. Schalke were the biggest over performers in terms of points with the equivalent of three more wins than expected. Surprisingly, Dortmund were the biggest overperformers on goals with almost 14 more goals than xG would predict. Spare a thought for some of the teams at the bottom of this table. Bremen, Stuttgart, and Frankfurt got the short end of the variance stick, and are in real danger of being demoted to the German second division as a result. 
+
+For more on expected goals, check out this [post](http://cartilagefreecaptain.sbnation.com/2015/10/19/9295905/premier-league-projections-and-new-expected-goals).
+
+
